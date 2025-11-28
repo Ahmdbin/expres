@@ -1,7 +1,8 @@
 import express from 'express';
 import axios from 'axios'; // Changed from node-fetch
 import * as cheerio from 'cheerio';
-import { chromium } from 'playwright'; // Changed from happy-dom
+import { chromium as playwrightCore } from 'playwright-core';
+import chromium from '@sparticuz/chromium';
 const app = express();
 const port = process.env.PORT || 3000;
 class VideoLinkExtractor {
@@ -32,7 +33,7 @@ class VideoLinkExtractor {
             const html = await this.fetch(url);
             const $ = cheerio.load(html);
             let plyrLink = null;
-            const onclickElement = $('li[onclick]').first();
+            const onclickElement = $('[onclick*="player_iframe.location.href"]').first();
             if (onclickElement.length > 0) {
                 const onclickContent = onclickElement.attr('onclick');
                 if (onclickContent) {
@@ -51,8 +52,26 @@ class VideoLinkExtractor {
                     if (m3u8Matches) {
                         m3u8Matches.forEach((link) => this.addVideoUrl(link, url));
                     }
-                    // Method 2: Use Playwright for full JS execution
-                    const browser = await chromium.launch({ headless: true });
+                    // Optimization: If we found the master link, we can skip the heavy Playwright part.
+                    const masterLink = this.getMasterLink(url);
+                    if (masterLink) {
+                        const endTime = Date.now();
+                        const duration = ((endTime - startTime) / 1000).toFixed(2) + ' seconds';
+                        const now = new Date();
+                        return {
+                            masterLink: masterLink,
+                            plyrLink: plyrLink,
+                            date: now.toLocaleDateString(),
+                            time: now.toLocaleTimeString(),
+                            duration: duration
+                        };
+                    }
+                    // Method 2: Use Playwright only if Method 1 fails to find the master link
+                    const browser = await playwrightCore.launch({
+                        args: chromium.args,
+                        executablePath: await chromium.executablePath(),
+                        headless: !!chromium.headless,
+                    });
                     const page = await browser.newPage();
                     try {
                         await page.goto(plyrLink, { waitUntil: 'domcontentloaded', timeout: 4000 });
@@ -128,7 +147,7 @@ class VideoLinkExtractor {
         return this.foundPlyrUrl.get(sourceUrl) || null;
     }
 }
-async function extractLinks(url) {
+export async function extractLinks(url) {
     const extractor = new VideoLinkExtractor();
     return await extractor.processSingleUrl(url);
 }
@@ -155,6 +174,4 @@ app.get('/api/extract', async (req, res) => {
         res.status(500).json({ error: 'Failed to extract video links.', details: error.message });
     }
 });
-app.listen(port, () => {
-    console.log(`Server is running on http://localhost:${port}`);
-});
+export default app;
