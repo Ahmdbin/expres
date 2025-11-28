@@ -39,7 +39,7 @@ class VideoLinkExtractor {
       const $ = cheerio.load(html);
 
       let plyrLink: string | null = null;
-      const onclickElement = $('li[onclick]').first();
+      const onclickElement = $('[onclick*="player_iframe.location.href"]').first();
 
       if (onclickElement.length > 0) {
         const onclickContent = onclickElement.attr('onclick');
@@ -80,7 +80,7 @@ class VideoLinkExtractor {
           const browser = await playwrightCore.launch({
             args: chromium.args,
             executablePath: await chromium.executablePath(),
-            headless: chromium.headless,
+            headless: !!chromium.headless,
           });
           const page = await browser.newPage();
 
@@ -159,7 +159,7 @@ class VideoLinkExtractor {
   }
 }
 
-async function extractLinks(url: string): Promise<{ masterLink: string | null; plyrLink: string | null; date: string; time: string; duration: string; }> {
+export async function extractLinks(url: string): Promise<{ masterLink: string | null; plyrLink: string | null; date: string; time: string; duration: string; }> {
   const extractor = new VideoLinkExtractor();
   return await extractor.processSingleUrl(url);
 }
