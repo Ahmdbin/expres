@@ -1,7 +1,8 @@
 import express, { Request, Response } from 'express';
 import axios from 'axios'; // Changed from node-fetch
 import * as cheerio from 'cheerio';
-import { chromium } from 'playwright'; // Changed from happy-dom
+import { chromium as playwrightCore } from 'playwright-core';
+import chromium from '@sparticuz/chromium';
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -76,7 +77,11 @@ class VideoLinkExtractor {
           }
 
           // Method 2: Use Playwright only if Method 1 fails to find the master link
-          const browser = await chromium.launch({ headless: true });
+          const browser = await playwrightCore.launch({
+            args: chromium.args,
+            executablePath: await chromium.executablePath(),
+            headless: chromium.headless,
+          });
           const page = await browser.newPage();
 
           try {
