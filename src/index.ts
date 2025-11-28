@@ -1,8 +1,7 @@
 import express, { Request, Response } from 'express';
 import axios from 'axios'; // Changed from node-fetch
 import * as cheerio from 'cheerio';
-import { chromium as playwrightCore } from 'playwright-core';
-import chromium from '@sparticuz/chromium';
+import { chromium } from 'playwright'; // Changed from happy-dom
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -61,27 +60,8 @@ class VideoLinkExtractor {
             m3u8Matches.forEach((link: string) => this.addVideoUrl(link, url));
           }
 
-          // Optimization: If we found the master link, we can skip the heavy Playwright part.
-          const masterLink = this.getMasterLink(url);
-          if (masterLink) {
-            const endTime = Date.now();
-            const duration = ((endTime - startTime) / 1000).toFixed(2) + ' seconds';
-            const now = new Date();
-            return {
-              masterLink: masterLink,
-              plyrLink: plyrLink,
-              date: now.toLocaleDateString(),
-              time: now.toLocaleTimeString(),
-              duration: duration
-            };
-          }
-
-          // Method 2: Use Playwright only if Method 1 fails to find the master link
-          const browser = await playwrightCore.launch({
-            args: chromium.args,
-            executablePath: await chromium.executablePath(),
-            headless: chromium.headless,
-          });
+          // Method 2: Use Playwright for full JS execution
+          const browser = await chromium.launch({ headless: true });
           const page = await browser.newPage();
 
           try {
@@ -190,4 +170,6 @@ app.get('/api/extract', async (req: Request, res: Response) => {
   }
 });
 
-export default app;
+app.listen(port, () => {
+  console.log(`Server is running on http://localhost:${port}`);
+});
