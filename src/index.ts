@@ -65,7 +65,7 @@ class VideoLinkExtractor {
           const browser = await playwrightCore.launch({
             args: chromium.args,
             executablePath: await chromium.executablePath(),
-            headless: chromium.headless,
+            headless: !!chromium.headless,
           });
           const page = await browser.newPage();
 
